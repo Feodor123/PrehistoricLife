@@ -1,4 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Xna.Framework;
 namespace PrehistoricLife
 {
     public struct Tile
@@ -6,8 +11,10 @@ namespace PrehistoricLife
         public LandType landType;
         public int[] itemCount;
         public StaticObject staticObject;
+        public List<Entity> entities;
         public Tile(LandType landType,StaticObject staticObject,int[] itemCount)
         {
+            entities = new List<Entity>();
             this.landType = landType;
             this.itemCount = itemCount;
             this.staticObject = staticObject;
@@ -31,6 +38,10 @@ namespace PrehistoricLife
         public void Put(Item item)
         {
             itemCount[(int)item]++;
+        }
+        public bool ContainsEnemy()
+        {
+            return entities.Exists(_ => _ is Tiger || _ is Mammont);
         }
     }
 }

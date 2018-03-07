@@ -1,10 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 namespace PrehistoricLife
 {
     public abstract class Entity
-    {
-        protected Point position;
+    {      
+        public Point position;
         protected double hp; 
         double HP
         {
@@ -18,6 +22,6 @@ namespace PrehistoricLife
             }
         }
         protected virtual double MaxHp => 0;
-        public abstract Action Update(World world);
+        public abstract void Update(World world);
     }
 }

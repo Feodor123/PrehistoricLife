@@ -1,4 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 namespace PrehistoricLife
 {
@@ -9,7 +13,7 @@ namespace PrehistoricLife
         {
             this.position = position;
         }
-        public override Action Update(World world)
+        public override Operation Update(World world)
         {
             throw new NotImplementedException();
         }
