@@ -15,8 +15,6 @@ namespace PrehistoricLife
     {
         Nothing = 0,
         TreeObject = 1,
-        Bush = 2,
-        Hut = 3,
     };
     public enum ActionType
     {
@@ -28,20 +26,19 @@ namespace PrehistoricLife
         Eat = 5,
         Sleep = 6,
         UseStaticObject = 7,
-        Build = 8,
-        Fight = 9,
-        Drink = 10,
-        Shout = 11,
-        SeeLand = 12,
-        SeeStaticObject = 13,
-        SeeItem = 14,
-        SeeEntity = 15,
-        Listen = 16,
-        GetHandType = 17,
-        GetHandCount = 18,
-        GetDayPart  = 19,
-        Turn = 20,
-        Goto = 21,
+        Fight = 8,
+        Drink = 9,
+        Shout = 10,
+        SeeLand = 11,
+        SeeStaticObject = 12,
+        SeeItem = 13,
+        SeeEntity = 14,
+        Listen = 15,
+        GetHandType = 16,
+        GetHandCount = 17,
+        GetDayPart  = 18,
+        Turn = 19,
+        Goto = 20,
     }
 
     public enum OperationType
@@ -54,11 +51,9 @@ namespace PrehistoricLife
         Eat = 5,
         Sleep = 6,
         UseStaticObject = 7,
-        Mate = 8,
-        Build = 9,
-        Fight = 10,
-        Drink = 11,
-        Shout = 12,
+        Fight = 8,
+        Drink = 9,
+        Shout = 10,
     }
 
     public enum DayPart
@@ -75,7 +70,7 @@ namespace PrehistoricLife
         Stick = 1,
         Stone = 2,
         Food = 3,
-        Skin = 4,
+        Spear = 4,
     }
 
     public enum EntityType

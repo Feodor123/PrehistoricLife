@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 namespace PrehistoricLife
 {
@@ -11,31 +9,32 @@ namespace PrehistoricLife
         Random rnd;
         static int OperationsTypeCount;
         static int handCount = Enum.GetNames(typeof(Hand)).Length;
+        static int itemCount = Enum.GetValues(typeof(Item)).Length;
         const int maxActionCount = 50;
         const int Height = 30;
-        const int Width = 50;
+        const int Width = 300;
         int angle = 0;
         int x = 0;
         int y = 0;
-        int[,] code = new int[Height,Width];
+        int[,] code = new int[Width, Height];
+        StaticObject usedStaticObject = StaticObject.Nothing;
 
         public static Dictionary<ActionType, int> actionCount = new Dictionary<ActionType, int>()
         {
             {ActionType.Nothing,1},
             {ActionType.Go,8},
-            {ActionType.Take,handCount * (Enum.GetValues(typeof(Item)).Length - 1)},//брать ничто нельзя
+            {ActionType.Take,handCount * (itemCount - 1)},//брать ничто нельзя
             {ActionType.Put,handCount},
-            {ActionType.Throw,handCount},
+            {ActionType.Throw,handCount * 8},
             {ActionType.Eat,handCount},
             {ActionType.Sleep,1},
-            {ActionType.UseStaticObject,1},
-            {ActionType.Build,1},//пока только шалаш
+            {ActionType.UseStaticObject,2},//начать/закончить
             {ActionType.Fight,1},
             {ActionType.Drink,1},
             {ActionType.Shout,World.WordCount},
             {ActionType.SeeStaticObject,World.sightCount},//под себя тоже можно
             {ActionType.SeeLand,World.sightCount},//под себя тоже можно
-            {ActionType.SeeItem,World.sightCount * (Enum.GetValues(typeof(Item)).Length)},//проверка на соответствующий item (или на полное отстствие)
+            {ActionType.SeeItem,World.sightCount * (itemCount)},//проверка на соответствующий item (или на полное отстствие)
             {ActionType.SeeEntity,World.sightCount * (Enum.GetValues(typeof(EntityType)).Length)},
             {ActionType.Listen,World.WordCount},
             {ActionType.GetHandType,handCount},
@@ -59,18 +58,22 @@ namespace PrehistoricLife
         public Point See(Human human,int n)
         {
             int h = (int)Math.Sqrt(n);//0,1,2,...
+            if (h == 0)
+            {
+                return human.position;
+            }
             int k = n - h * h - h;//-h,...,0,...,h
-            Point v0 = Simulation.directions[angle];
+            Point v0 = World.directions[angle];
             Point v1 = new Point();
             v0 = new Point(v0.X * h, v0.Y * h);
             if (k > 0)
             {
-                v1 = Simulation.directions[(angle + 1) % 8];
+                v1 = World.directions[(angle + 1) % 8];
                 v1 = new Point(v0.X * h, v0.Y * h);
             }
             else
             {
-                v1 = Simulation.directions[(angle + 7) % 8];
+                v1 = World.directions[(angle + 7) % 8];
                 v1 = new Point(v0.X * h, v0.Y * h);
                 k = -k;
             }
@@ -83,6 +86,11 @@ namespace PrehistoricLife
         {
             this.rnd = rnd;
             GenerateRandom();
+        }
+        public Genom(int[,] code,Random rnd)
+        {
+            this.rnd = rnd;
+            this.code = (int[,])code.Clone();
         }
         void GenerateRandom()
         {
@@ -98,107 +106,151 @@ namespace PrehistoricLife
         {
             return rnd.Next(OperationsTypeCount);
         }
-        public void Mutate()
+        public Genom Mutate()
         {
+            Genom genom = new Genom(code, rnd);
             int x = rnd.Next(Width);
             int y = rnd.Next(Height);
-            code[y, x] = Rnd();
+            genom.code[x, y] = Rnd();
+            return genom;
         }
-
-        public Operation Update(World world,Human human)
+        public void Drink(Human human)
         {
+            human.Water = World.Watering;
+        }
+        public void Update(World world,Human human)//OK
+        {
+            Item item;
+            Hand hand;
             bool end = false;
             for (int i = 0;i < maxActionCount && !end; i++)
             {
                 int j = Enum.GetValues(typeof(ActionType)).Length - 1;
-                while (actionBias[(ActionType)j] > code[y, x]) { j--; }
-                int n = code[y, x] - actionBias[(ActionType)j];
+                while (actionBias[(ActionType)j] > code[x, y]) { j--; }
+                int n = code[x, y] - actionBias[(ActionType)j];
                 switch ((ActionType)j)
                 {
-                    case ActionType.Nothing:
+                    case ActionType.Nothing://OK
                         end = true;
                         x++;
-                        return new Operation(OperationType.Nothing);
-                    case ActionType.Go:
-                        end = true;
-                        x++;//нафиг перескоки
-                        return new Operation(OperationType.Go,n);
-                    case ActionType.Take:
-                        end = true;
-                        if (world[human.position].CanTake((Item)((n % handCount) + 1)) && human.CanAdd((Hand)(n/handCount), (Item)((n % handCount) + 1)))
-                            x += 1;
-                        else
-                            x += 2;
-                        return new Operation(OperationType.Take, n);
-                    case ActionType.Put:
-                        end = true;
-                        if (!human.stuff[n].IsEmpty)
-                            x += 1;
-                        else
-                            x += 2;
-                        return new Operation(OperationType.Put, n);
-                    case ActionType.Throw:
-                        end = true;
-                        if (!human.stuff[n].IsEmpty)
-                            x += 1;
-                        else
-                            x += 2;
-                        return new Operation(OperationType.Throw, n);
-                    case ActionType.Eat:
-                        end = true;
-                        if (!human.stuff[n].IsEmpty && human.stuff[n].IsFood)
-                            x += 1;
-                        else
-                            x += 2;
-                        return new Operation(OperationType.Eat, n);
-                    case ActionType.Sleep:
+                        break;
+                    case ActionType.Go://OK
                         end = true;
                         x++;
-                        return new Operation(OperationType.Sleep);
-                    case ActionType.UseStaticObject:
+                        world.Go(human,(angle + n) % 8);
+                        break;
+                    case ActionType.Take://OK
+                        end = true;
+                        item = (Item)(n % (itemCount - 1));
+                        hand = (Hand)(n / (itemCount - 1));
+                        if (world[human.position].CanTake(item) && human.CanAdd(hand, item))
+                        {
+                            x += 1;
+                            human.Add(hand, item);
+                            world[human.position].Take(item);
+                        }
+                        else
+                            x += 2;
+                        break;
+                    case ActionType.Put://OK
+                        end = true;
+                        if (!human.stuff[n].IsEmpty)
+                        {
+                            x += 1;
+                            world[human.position].Put(human.stuff[n].item);
+                            human.Remove((Hand)n);
+                        }
+                        else
+                            x += 2;
+                        break;
+                    case ActionType.Throw://OK
+                        end = true;
+                        hand = (Hand)(n / 8);
+                        if (!human.stuff[(int)hand].IsEmpty)
+                        {
+                            x += 1;
+                            world.Throw(human.stuff[n].item,human.position,(n + angle) % 8);
+                            human.Remove(hand);
+                        }
+                        else
+                            x += 2;
+                        break;
+                    case ActionType.Eat://OK
+                        end = true;
+                        if (human.CanEat(n))
+                        {
+                            human.Eat(n);
+                            x++;
+                        }
+                        else
+                            x += 2;
+                        break;
+                    case ActionType.Sleep://OK
+                        end = true;
+                        x++;
+                        human.sleep = true;
+                        break;
+                    case ActionType.UseStaticObject://OK
                         end = true;
                         switch (world[human.position].staticObject)
                         {
                             case StaticObject.Nothing:
                                 x += 1;
                                 break;
-                            case StaticObject.TreeObject:
-                                x += 2;
-                                break;
-                            case StaticObject.Bush:
-                                x += 3;
-                                break;
-                            case StaticObject.Hut:
-                                x += 4;
+                            default:
+                                if (n == 0)
+                                {
+                                    if (usedStaticObject == StaticObject.Nothing)
+                                    {
+                                        usedStaticObject = world[human.position].staticObject;
+                                        x += 2;
+                                    }
+                                    else
+                                    {
+                                        x += 3;
+                                    }
+                                }
+                                else
+                                {
+                                    if (usedStaticObject == StaticObject.Nothing)
+                                    {
+                                        x += 2;
+                                    }
+                                    else
+                                    {
+                                        usedStaticObject = StaticObject.Nothing;
+                                        x += 3;
+                                    }
+                                }
                                 break;
                         }
-                        return new Operation(OperationType.UseStaticObject);
-                    case ActionType.Build:
-                        if (human.CanBuild())
-                            x += 1;
-                        else
-                            x += 2;
-                        end = true;
-                        return new Operation(OperationType.Build);
-                    case ActionType.Fight:
+                        break;
+                    case ActionType.Fight://OK
                         if (world[human.position].ContainsEnemy())
+                        {
+                            world[human.position].entities.First(_ => _ is Tiger || _ is Mammont).Hit(human.MeleeDamage);
                             x += 1;
+                        }
                         else
                             x += 2;
                         end = true;
-                        return new Operation(OperationType.Fight);
-                    case ActionType.Drink:
+                        break;
+                    case ActionType.Drink://OK
                         if (world[human.position].landType == LandType.Water)
+                        {
                             x += 1;
+                            Drink(human);
+                        }
                         else
                             x += 2;
                         end = true;
-                        return new Operation(OperationType.Drink);
-                    case ActionType.Shout:
+                        break;
+                    case ActionType.Shout://OK
                         x += 1;
+                        world.Cry(n);
                         end = true;
-                        return new Operation(OperationType.Shout,n);
-                    case ActionType.SeeLand:
+                        break;
+                    case ActionType.SeeLand://OK
                         if (n >= Math.Pow(World.DayPartsSight[world.DayPartNow] + 1,2))
                         {
                             x += 1;
@@ -219,7 +271,7 @@ namespace PrehistoricLife
                             }
                         }
                         break;
-                    case ActionType.SeeStaticObject:
+                    case ActionType.SeeStaticObject://OK
                         if (n >= Math.Pow(World.DayPartsSight[world.DayPartNow] + 1, 2))
                         {
                             x += 1;
@@ -235,19 +287,13 @@ namespace PrehistoricLife
                                 case StaticObject.TreeObject:
                                     x += 3;
                                     break;
-                                case StaticObject.Bush:
-                                    x += 4;
-                                    break;
-                                case StaticObject.Hut:
-                                    x += 5;
-                                    break;
                                 default:
                                     throw new Exception();
                             }
                         }
                         break;
-                    case ActionType.SeeItem:
-                        Item item = (Item)(n / World.sightCount);
+                    case ActionType.SeeItem://OK
+                        item = (Item)(n / World.sightCount);
                         n %= World.sightCount;
                         if (n >= Math.Pow(World.DayPartsSight[world.DayPartNow] + 1, 2))
                         {
@@ -265,14 +311,14 @@ namespace PrehistoricLife
                             }
                             else
                             {
-                                if (tile.itemCount[(int)item] != 0)
+                                if (tile.itemCount[(int)item - 1] != 0)
                                     x += 2;
                                 else
                                     x += 3;
                             }
                         }
                         break;
-                    case ActionType.SeeEntity:
+                    case ActionType.SeeEntity://OK
                         EntityType entity = (EntityType)(n / World.sightCount);
                         n %= World.sightCount;
                         if (n >= Math.Pow(World.DayPartsSight[world.DayPartNow] + 1, 2))
@@ -285,40 +331,40 @@ namespace PrehistoricLife
                             switch (entity)
                             {
                                 case EntityType.Human:
-                                    x += 1 + tile.entities.Count(_ => _ is Human);
+                                    x += 2 + tile.entities.Count(_ => _ is Human);
                                     break;
                                 case EntityType.Tiger:
-                                    x += 1 + tile.entities.Count(_ => _ is Tiger);
+                                    x += 2 + tile.entities.Count(_ => _ is Tiger);
                                     break;
                                 case EntityType.Mammont:
-                                    x += 1 + tile.entities.Count(_ => _ is Mammont);
+                                    x += 2 + tile.entities.Count(_ => _ is Mammont);
                                     break;
                             }
                         }
                         break;
-                    case ActionType.Listen:
-                        if (world.cry[n])
+                    case ActionType.Listen://OK
+                        if (world.cryBefore[n])
                             x += 1;
                         else
                             x += 2;
                             break;
-                    case ActionType.GetHandType:
+                    case ActionType.GetHandType://OK
                         if (human.stuff[n].IsEmpty)
                             x += 1;
                         else
                             x += (int)human.stuff[n].item + 1;
                         break;
-                    case ActionType.GetHandCount:
-                        x += human.stuff[n].count;
+                    case ActionType.GetHandCount://OK
+                        x += human.stuff[n].count + 1;
                         break;
-                    case ActionType.GetDayPart:
+                    case ActionType.GetDayPart://OK
                         x += (int)world.DayPartNow + 1;
                         break;
-                    case ActionType.Turn:
+                    case ActionType.Turn://OK
                         x++;
                         angle = (angle + (n + 1)) % 8;
                         break;
-                    case ActionType.Goto:
+                    case ActionType.Goto://OK
                         x = 0;
                         y = n;
                         break;
@@ -326,11 +372,6 @@ namespace PrehistoricLife
                         throw new Exception();
                 }
             }
-            return new Operation(OperationType.Nothing);
-        }
-        Dictionary<ActionType,Action> Do = new Dictionary<ActionType, Action>()
-        {
-            {ActionType.Build,_ => _},
         }
     }
 }
